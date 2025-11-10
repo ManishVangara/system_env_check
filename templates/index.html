@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Check - Download Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            font-weight: 600;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 16px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .info-box p {
+            color: #1565c0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .download-link {
+            display: none;
+            background: #e8f5e9;
+            border: 2px dashed #4caf50;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .download-link.show {
+            display: block;
+        }
+
+        .download-link h3 {
+            color: #2e7d32;
+            margin-bottom: 12px;
+        }
+
+        .download-link a {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .download-link a:hover {
+            background: #388e3c;
+        }
+
+        .steps {
+            margin-top: 24px;
+        }
+
+        .step {
+            display: flex;
+            align-items: start;
+            margin-bottom: 16px;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 16px;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 16px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .error p {
+            color: #c62828;
+        }
+
+        .session-info {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 16px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .session-info.show {
+            display: block;
+        }
+
+        .session-info strong {
+            color: #e65100;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>System Environment Check</h1>
+        <p class="subtitle">Download and run the system check client</p>
+
+        <div class="info-box">
+            <p>
+                <strong>What does this do?</strong><br>
+                This tool will check your system for virtual machines, remote access tools,
+                multiple monitors, and other environmental factors. The results will be
+                automatically sent back to this server.
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>Start System Check</h2>
+            <button class="button" id="createSessionBtn" onclick="createSession()">
+                Generate Download Link
+            </button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Creating session...</p>
+            </div>
+
+            <div class="download-link" id="downloadLink">
+                <h3>Ready to Download!</h3>
+                <p style="margin-bottom: 16px; color: #555;">
+                    Click the button below to download the system check client
+                </p>
+                <a href="#" id="downloadBtn" download>Download System Check Client</a>
+            </div>
+
+            <div class="session-info" id="sessionInfo">
+                <strong>Session ID:</strong> <span id="sessionId"></span><br>
+                <strong>Status:</strong> <span id="sessionStatus">pending</span>
+            </div>
+
+            <div class="error" id="error">
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>How to Use</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        Click "Generate Download Link" to create a new session
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        Download the executable file for your operating system
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        Double-click the downloaded file to run the system check
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        Results will be automatically sent to the server
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+
+        async function createSession() {
+            const btn = document.getElementById('createSessionBtn');
+            const loading = document.getElementById('loading');
+            const downloadLink = document.getElementById('downloadLink');
+            const sessionInfo = document.getElementById('sessionInfo');
+            const error = document.getElementById('error');
+
+            // Hide previous results
+            downloadLink.classList.remove('show');
+            sessionInfo.classList.remove('show');
+            error.classList.remove('show');
+
+            // Show loading
+            btn.disabled = true;
+            loading.classList.add('show');
+
+            try {
+                const response = await fetch('/api/sessions/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        metadata: {
+                            created_from: 'web_interface',
+                            user_agent: navigator.userAgent
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to create session');
+                }
+
+                // Store session ID
+                currentSessionId = data.session_id;
+
+                // Update UI
+                document.getElementById('sessionId').textContent = data.session_id;
+                document.getElementById('sessionStatus').textContent = 'pending';
+                document.getElementById('downloadBtn').href = data.download_url;
+
+                // Show download link and session info
+                downloadLink.classList.add('show');
+                sessionInfo.classList.add('show');
+
+                // Start polling for results
+                startPolling(data.session_id);
+
+            } catch (err) {
+                console.error('Error creating session:', err);
+                document.getElementById('errorMessage').textContent = err.message;
+                error.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                btn.disabled = false;
+            }
+        }
+
+        let pollingInterval = null;
+
+        function startPolling(sessionId) {
+            // Clear any existing polling
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+
+            // Poll every 3 seconds
+            pollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/sessions/${sessionId}`);
+                    const data = await response.json();
+
+                    if (data.success && data.session) {
+                        const status = data.session.status;
+                        document.getElementById('sessionStatus').textContent = status;
+
+                        // Stop polling if completed
+                        if (status === 'completed') {
+                            clearInterval(pollingInterval);
+                            pollingInterval = null;
+
+                            // Show results
+                            if (data.session.results) {
+                                showResults(data.session.results);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error polling session:', err);
+                }
+            }, 3000);
+        }
+
+        function showResults(results) {
+            const sessionInfo = document.getElementById('sessionInfo');
+            sessionInfo.innerHTML = `
+                <strong>Session Completed!</strong><br><br>
+                <strong>Status:</strong> ${results.status}<br>
+                <strong>Virtual Machine:</strong> ${results.virtual_machine ? 'Yes' : 'No'}<br>
+                <strong>Remote Desktop:</strong> ${results.is_rdp ? 'Yes' : 'No'}<br>
+                <strong>Remote Tools:</strong> ${results.remote_access_tools.length > 0 ? results.remote_access_tools.join(', ') : 'None'}<br>
+                <strong>Multiple Monitors:</strong> ${results.multiple_monitors ? 'Yes' : 'No'}<br>
+                <strong>Multiple Keyboards:</strong> ${results.multiple_keyboards ? 'Yes' : 'No'}<br>
+                <strong>Multiple Mice:</strong> ${results.multiple_mice ? 'Yes' : 'No'}<br>
+            `;
+        }
+
+        // Clean up polling on page unload
+        window.addEventListener('beforeunload', () => {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+        });
+    </script>
+</body>
+</html>
