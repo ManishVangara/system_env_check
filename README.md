@@ -1,21 +1,38 @@
-# System Environment Check
+# System Environment Check - Simplified
 
-A Python-based application that allows clients to download and run pre-built system check executables on different operating systems (Windows, Linux, macOS). The executable performs environment checks and automatically sends results back to the server.
+A Python-based application that provides pre-built system check executables for Windows, Linux, and macOS. Users can download, double-click to run, and view results using a unique Run ID. **No registration or authentication required!**
 
 ## Features
 
-- **Cross-platform support**: Windows, Linux, and macOS
-- **Double-click to run**: No installation required, just download and execute
+- **Single executable per OS**: Build once, use for everyone
+- **No session management**: No tokens, credentials, or authentication
+- **Double-click to run**: No installation required
+- **Unique Run IDs**: Each execution generates a unique identifier for viewing results
 - **Automated checks**:
   - Virtual machine detection
   - Remote desktop connections (RDP)
   - Remote access tools (TeamViewer, AnyDesk, etc.)
   - Multiple monitors
   - Multiple keyboards and mice
-  - External peripherals
-- **Secure credential embedding**: Credentials are embedded in the executable during download
-- **Web interface**: Easy-to-use interface for generating download links
-- **RESTful API**: Server API for session management and result collection
+  - System information collection
+- **Web interface**: Simple download and results viewing
+- **RESTful API**: Server API for result collection
+
+## How It Works
+
+### Simplified Workflow
+
+```
+1. User visits web interface
+2. Downloads pre-built executable (same file for everyone)
+3. Double-clicks to run
+4. Client generates unique Run ID
+5. Client runs system checks
+6. Client sends results to server
+7. User views results using Run ID
+```
+
+**Key Difference**: No credential embedding! Each executable is a standalone file that generates its own unique Run ID when executed.
 
 ## Project Structure
 
@@ -31,7 +48,8 @@ system_env_check/
 │   ├── build_all.sh                 # Unix build script
 │   └── build_all.bat                # Windows build script
 ├── templates/
-│   └── index.html                   # Web interface
+│   ├── index.html                   # Main download page
+│   └── results.html                 # Results viewing page
 ├── static/                          # Static files (if any)
 ├── executables/                     # Built executables (created after build)
 ├── requirements.txt                 # Server dependencies
@@ -70,7 +88,7 @@ pip install -r requirements.txt
 
 ### 4. Build Client Executables
 
-You need to build the client executables for each platform you want to support. The build process must be run on each target platform.
+You need to build the client executable for each platform you want to support. The build process must be run on each target platform.
 
 #### On Linux:
 
@@ -108,7 +126,7 @@ build_scripts\build_all.bat
 
 This creates: `executables\system_check_client.exe`
 
-**Note**: To build for all platforms, you'll need to run the build script on each operating system and collect the executables in the `executables/` directory.
+**Note**: Build once per platform. The same executable works for all users!
 
 ## Usage
 
@@ -129,17 +147,20 @@ The server will start on `http://localhost:5000`
 ### Using the Web Interface
 
 1. Open your browser and navigate to `http://localhost:5000`
-2. Click "Generate Download Link"
-3. A download link will be created with embedded credentials
-4. Click "Download System Check Client" to download the executable
-5. The downloaded file will be specific to your operating system
+2. Click the download button for your operating system
+3. The executable will download (same file for everyone!)
+4. Run the downloaded executable:
+   - **Windows**: Double-click `system_check_client.exe`
+   - **Linux/macOS**: Make executable (`chmod +x system_check_client`) and run
+5. The client will display a unique **Run ID**
+6. Copy the Run ID and paste it in the web interface to view results
 
 ### Running the Client Executable
 
 **Method 1: Double-click (Recommended)**
 - Simply double-click the downloaded executable
-- It will run the system checks and send results to the server
-- A console window will show the progress
+- Copy the Run ID displayed in the console window
+- View results on the web interface
 
 **Method 2: Command Line**
 
@@ -149,57 +170,65 @@ The server will start on `http://localhost:5000`
 
 # On Windows:
 system_check_client.exe
+
+# With custom server:
+./system_check_client --server http://your-server.com:5000
+
+# Save results locally without sending to server:
+./system_check_client --save-only
+```
+
+### Configuration File (Optional)
+
+You can create a `config.json` file next to the executable to set a default server:
+
+```json
+{
+  "server": "http://your-server.com:5000"
+}
 ```
 
 ### Viewing Results
 
-Results are automatically displayed on the web interface after the client completes the checks. You can also:
+**Option 1**: Use the Run ID
+- Copy the Run ID from the client window
+- Paste it in the web interface input box
+- Click "View Results"
 
-1. Check the session status via API:
-   ```bash
-   curl http://localhost:5000/api/sessions/<session_id>
-   ```
+**Option 2**: Direct URL
+- Navigate to: `http://localhost:5000/results/<run-id>`
 
-2. View stored results in `server/results/<session_id>.json`
+**Option 3**: Recent Results
+- The homepage shows the 5 most recent results
+- Click on any result to view details
 
 ## API Endpoints
 
-### Create Session
-
-**POST** `/api/sessions/create`
-
-Creates a new session and returns credentials.
-
-**Response:**
-```json
-{
-  "success": true,
-  "session_id": "uuid",
-  "token": "secure-token",
-  "server_url": "http://localhost:5000",
-  "download_url": "http://localhost:5000/api/download/{session_id}/{token}"
-}
-```
-
 ### Download Executable
 
-**GET** `/api/download/<session_id>/<token>`
+**GET** `/download` or `/download/<os_type>`
 
-Downloads the executable with embedded credentials. Automatically detects the client's OS from the User-Agent header.
+Downloads the pre-built executable for the specified OS.
 
-**Query Parameters:**
-- `os` (optional): Override OS detection (`windows`, `linux`, `darwin`)
+**Parameters:**
+- `os_type` (optional): `windows`, `linux`, or `darwin`
+- Auto-detects OS from User-Agent if not specified
+
+**Example:**
+```bash
+curl -O http://localhost:5000/download/windows
+```
 
 ### Submit Results
 
-**POST** `/api/sessions/<session_id>/result`
+**POST** `/api/results`
 
 Receives system check results from the client.
 
 **Request Body:**
 ```json
 {
-  "token": "secure-token",
+  "run_id": "a1b2c3d4-...",
   "results": {
     "timestamp": "2025-01-01T00:00:00Z",
     "status": "PASS",
@@ -208,23 +237,68 @@ Receives system check results from the client.
     "remote_access_tools": [],
     "multiple_monitors": false,
     "multiple_keyboards": false,
-    "multiple_mice": false
+    "multiple_mice": false,
+    "system_info": {
+      "hostname": "my-computer",
+      "platform": "Windows",
+      "...": "..."
+    }
   },
-  "client_version": "0.3.0"
+  "client_version": "1.0.0"
 }
 ```
 
-### Get Session
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Results received successfully",
+  "run_id": "a1b2c3d4-...",
+  "view_url": "/results/a1b2c3d4-..."
+}
+```
 
-**GET** `/api/sessions/<session_id>`
+### Get Results
 
-Retrieves session information and results.
+**GET** `/api/results/<run_id>`
 
-### List Sessions
+Retrieves results for a specific Run ID.
 
-**GET** `/api/sessions`
+**Example:**
+```bash
+curl http://localhost:5000/api/results/a1b2c3d4-...
+```
 
-Lists all sessions.
+### List All Results
+
+**GET** `/api/results`
+
+Lists all results (most recent first).
+
+**Example:**
+```bash
+curl http://localhost:5000/api/results
+```
+
+### Health Check
+
+**GET** `/health`
+
+Server health and status check.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "executables_available": {
+    "windows": true,
+    "linux": false,
+    "darwin": false
+  },
+  "results_count": 42
+}
+```
 
 ## System Checks Performed
 
@@ -252,9 +326,12 @@ Lists all sessions.
    - Keyboards (excluding internal/HID keyboards)
    - Mice (excluding touchpads)
 
-6. **External Peripherals**
-   - USB devices
-   - Bluetooth devices
+6. **System Information**
+   - Hostname
+   - Operating system and version
+   - Architecture
+   - Processor
+   - Username
 
 ## Development
 
@@ -264,7 +341,7 @@ For development and testing, you can run the client directly without building:
 
 ```bash
 cd client
-python system_check_client.py --server http://localhost:5000 --session-id test-session --token test-token
+python system_check_client.py --server http://localhost:5000
 ```
 
 ### Manual Build
@@ -300,11 +377,28 @@ You can configure the server using environment variables:
 
 ### Security Considerations
 
-1. **Use HTTPS**: In production, always use HTTPS to protect credentials in transit
-2. **Token Security**: Tokens are generated using `secrets.token_urlsafe()` for cryptographic security
-3. **Session Storage**: For production, consider using a database instead of in-memory storage
-4. **Rate Limiting**: Implement rate limiting to prevent abuse
-5. **CORS**: Configure CORS appropriately for your use case
+1. **Use HTTPS**: In production, always use HTTPS
+2. **Rate Limiting**: Implement rate limiting to prevent abuse
+3. **CORS**: Configure CORS appropriately for your use case
+4. **Input Validation**: Server validates all incoming data
+5. **File Storage**: Consider using a database for production instead of file-based storage
+
+## Advantages of This Approach
+
+### Compared to Session-Based System
+
+✅ **Simpler**: No credential management, no session creation
+✅ **More Scalable**: Same executable for all users
+✅ **Easier Distribution**: Just host three files (one per OS)
+✅ **No Expiration**: Run IDs don't expire
+✅ **Offline Capable**: Can run with `--save-only` flag
+✅ **Transparent**: Results include all system info
+✅ **Build Once**: One build per OS, works forever
+
+### Trade-offs
+
+⚠️ **No Authentication**: Anyone can submit results (can add API keys if needed)
+⚠️ **Public Results**: Run IDs are the only access control (use UUIDs for security)
 
 ## Troubleshooting
 
@@ -313,7 +407,7 @@ You can configure the server using environment variables:
 If you get "Executable not found" error when downloading:
 1. Make sure you've built the executable for the target OS
 2. Check that the executable exists in `executables/` directory
-3. Verify the executable has the correct name for the OS
+3. Verify the server shows "✓" for that OS when starting
 
 ### Build Fails
 
@@ -326,15 +420,22 @@ If PyInstaller build fails:
 
 1. Verify the server is running
 2. Check firewall settings
-3. Ensure the correct server URL is being used
-4. For local testing, use `http://localhost:5000` or `http://127.0.0.1:5000`
+3. Use `--server` flag to specify correct server URL
+4. For local testing, use `http://localhost:5000`
 
 ### Results Not Received
 
 1. Check the client console output for errors
-2. Verify the session ID and token are correct
+2. Verify the server is accessible from the client
 3. Check server logs for errors
-4. Ensure the server endpoint is accessible from the client
+4. Try using `--save-only` to test local functionality
+
+### "Permission Denied" on Linux/macOS
+
+Make the executable file executable:
+```bash
+chmod +x system_check_client
+```
 
 ## License
 

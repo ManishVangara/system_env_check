@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Check Results</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .status-banner {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .status-banner.pass {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+
+        .status-banner.fail {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+
+        .checks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .check-item {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #ddd;
+        }
+
+        .check-item.pass {
+            border-left-color: #4caf50;
+        }
+
+        .check-item.fail {
+            border-left-color: #f44336;
+        }
+
+        .check-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .check-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .check-value.pass {
+            color: #4caf50;
+        }
+
+        .check-value.fail {
+            color: #f44336;
+        }
+
+        .info-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-section h3 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .info-label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .info-value {
+            color: #333;
+            font-family: monospace;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            border: 2px solid #f44336;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Home</a>
+
+        <div class="card" id="resultsCard">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading results...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const runId = "{{ run_id }}";
+
+        window.addEventListener('DOMContentLoaded', loadResults);
+
+        async function loadResults() {
+            const card = document.getElementById('resultsCard');
+
+            try {
+                const response = await fetch(`/api/results/${runId}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    card.innerHTML = `
+                        <div class="error">
+                            <h2>Results Not Found</h2>
+                            <p style="margin-top: 12px;">
+                                No results found for Run ID: <code>${runId}</code>
+                            </p>
+                            <p style="margin-top: 12px;">
+                                <a href="/" class="button">Go Back</a>
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const result = data.data;
+                const checks = result.results;
+                const status = checks.status || 'UNKNOWN';
+
+                // Build the results page
+                card.innerHTML = `
+                    <h1>System Check Results</h1>
+                    <p class="subtitle">Run ID: <code>${result.run_id}</code></p>
+
+                    <div class="status-banner ${status.toLowerCase()}">
+                        ${status === 'PASS' ? '✓ PASSED' : '✗ FAILED'}
+                    </div>
+
+                    <h2 style="margin-bottom: 16px; color: #333;">Check Results</h2>
+                    <div class="checks-grid">
+                        ${buildCheckItem('Virtual Machine', checks.virtual_machine)}
+                        ${buildCheckItem('Remote Desktop', checks.is_rdp)}
+                        ${buildCheckItem('Multiple Monitors', checks.multiple_monitors)}
+                        ${buildCheckItem('Multiple Keyboards', checks.multiple_keyboards)}
+                        ${buildCheckItem('Multiple Mice', checks.multiple_mice)}
+                        ${buildCheckItem('Remote Access Tools', checks.remote_access_tools && checks.remote_access_tools.length > 0, checks.remote_access_tools)}
+                    </div>
+
+                    ${checks.system_info ? buildSystemInfo(checks.system_info) : ''}
+
+                    <div class="info-section">
+                        <h3>Result Details</h3>
+                        <div class="info-grid">
+                            <div class="info-label">Run ID:</div>
+                            <div class="info-value">${result.run_id}</div>
+
+                            <div class="info-label">Client Version:</div>
+                            <div class="info-value">${result.client_version || 'unknown'}</div>
+
+                            <div class="info-label">Timestamp:</div>
+                            <div class="info-value">${new Date(checks.timestamp).toLocaleString()}</div>
+
+                            <div class="info-label">Received At:</div>
+                            <div class="info-value">${new Date(result.received_at).toLocaleString()}</div>
+
+                            <div class="info-label">Client IP:</div>
+                            <div class="info-value">${result.client_ip || 'unknown'}</div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="/" class="button">Run Another Check</a>
+                    </div>
+                `;
+
+            } catch (err) {
+                console.error('Error loading results:', err);
+                card.innerHTML = `
+                    <div class="error">
+                        <h2>Error Loading Results</h2>
+                        <p style="margin-top: 12px;">
+                            An error occurred while loading the results.
+                        </p>
+                        <p style="margin-top: 12px;">
+                            <a href="/" class="button">Go Back</a>
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+        function buildCheckItem(label, value, details = null) {
+            let displayValue = '';
+            let statusClass = '';
+
+            if (Array.isArray(details) && details.length > 0) {
+                // Remote tools detected
+                displayValue = details.join(', ');
+                statusClass = 'fail';
+            } else if (typeof value === 'boolean') {
+                displayValue = value ? 'Detected' : 'Not Detected';
+                statusClass = value ? 'fail' : 'pass';
+            } else {
+                displayValue = value ? 'Yes' : 'No';
+                statusClass = value ? 'fail' : 'pass';
+            }
+
+            return `
+                <div class="check-item ${statusClass}">
+                    <div class="check-label">${label}</div>
+                    <div class="check-value ${statusClass}">${displayValue}</div>
+                </div>
+            `;
+        }
+
+        function buildSystemInfo(info) {
+            return `
+                <div class="info-section">
+                    <h3>System Information</h3>
+                    <div class="info-grid">
+                        ${info.hostname ? `
+                            <div class="info-label">Hostname:</div>
+                            <div class="info-value">${info.hostname}</div>
+                        ` : ''}
+
+                        ${info.platform ? `
+                            <div class="info-label">Platform:</div>
+                            <div class="info-value">${info.platform}</div>
+                        ` : ''}
+
+                        ${info.platform_release ? `
+                            <div class="info-label">OS Release:</div>
+                            <div class="info-value">${info.platform_release}</div>
+                        ` : ''}
+
+                        ${info.architecture ? `
+                            <div class="info-label">Architecture:</div>
+                            <div class="info-value">${info.architecture}</div>
+                        ` : ''}
+
+                        ${info.processor ? `
+                            <div class="info-label">Processor:</div>
+                            <div class="info-value">${info.processor}</div>
+                        ` : ''}
+
+                        ${info.username ? `
+                            <div class="info-label">Username:</div>
+                            <div class="info-value">${info.username}</div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

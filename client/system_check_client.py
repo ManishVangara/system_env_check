@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-System Check Client
-Downloads and runs system environment checks, then reports results to server.
+System Check Client - Simplified Version
+Runs system environment checks and reports results to server.
+No authentication required - generates unique run ID per execution.
 """
 
 import platform
@@ -13,9 +14,13 @@ from typing import Dict, Any
 import subprocess
 import os
 import sys
-from urllib.parse import urlparse, parse_qs
+import uuid
+import socket
 
-VERSION = "0.3.0"
+VERSION = "1.0.0"
+
+# Default server URL (can be overridden)
+DEFAULT_SERVER = "http://localhost:5000"
 
 # ----------------------------------------------
 # System Detection Functions
@@ -185,6 +190,22 @@ def is_rdp_session():
 
     return False
 
+def get_system_info():
+    """Get basic system information for identification."""
+    try:
+        return {
+            "hostname": socket.gethostname(),
+            "platform": platform.system(),
+            "platform_release": platform.release(),
+            "platform_version": platform.version(),
+            "architecture": platform.machine(),
+            "processor": platform.processor(),
+            "username": os.getenv('USERNAME') or os.getenv('USER') or 'unknown'
+        }
+    except Exception as e:
+        print(f"Error getting system info: {e}")
+        return {}
+
 def run_system_check() -> Dict[str, Any]:
     """Run a full system check and return results."""
     print("Running system checks...")
@@ -197,6 +218,7 @@ def run_system_check() -> Dict[str, Any]:
         "multiple_keyboards": count_devices("Keyboard") > 1,
         "multiple_mice": count_devices("Mouse") > 1,
         "virtual_machine": check_virtual_machine(),
+        "system_info": get_system_info()
     }
 
     # Final decision
@@ -214,137 +236,53 @@ def run_system_check() -> Dict[str, Any]:
 
     print("-" * 50)
     for key, value in result.items():
-        print(f"{key.replace('_', ' ').title()}: {value}")
+        if key != "system_info":  # Don't print system info in console
+            print(f"{key.replace('_', ' ').title()}: {value}")
     print("-" * 50)
 
     return result
 
 # ----------------------------------------------
-# Credential Management
+# Server Communication
 # ----------------------------------------------
 
-def parse_protocol_url(url_string: str) -> Dict[str, str]:
-    """Parse systemcheck:// URL and extract credentials."""
-    try:
-        parsed = urlparse(url_string)
+def get_server_url(args: argparse.Namespace) -> str:
+    """Determine server URL from arguments or config file."""
 
-        if parsed.scheme != "systemcheck":
-            raise ValueError(f"Invalid protocol: {parsed.scheme}. Expected 'systemcheck'")
+    # Priority 1: Command-line argument
+    if args.server:
+        return args.server.rstrip('/')
 
-        params = parse_qs(parsed.query)
-
-        server = params.get("server", [None])[0]
-        session_id = params.get("session_id", [None])[0]
-        token = params.get("token", [None])[0]
-
-        if not all([server, session_id, token]):
-            raise ValueError("Missing required parameters: server, session_id, or token")
-
-        return {
-            "server": server,
-            "session_id": session_id,
-            "token": token
-        }
-    except Exception as e:
-        print(f"Error parsing protocol URL: {e}")
-        return None
-
-def load_embedded_credentials() -> Dict[str, str]:
-    """Load credentials embedded in the executable binary."""
-    try:
-        if getattr(sys, 'frozen', False):
-            executable_path = sys.executable
-        else:
-            executable_path = os.path.abspath(__file__)
-
-        with open(executable_path, 'rb') as f:
-            data = f.read()
-
-        marker_start = b"__SYSTEMCHECK_CREDS_START__"
-        marker_end = b"__SYSTEMCHECK_CREDS_END__"
-
-        start_pos = data.find(marker_start)
-        end_pos = data.find(marker_end)
-
-        if start_pos != -1 and end_pos != -1:
-            creds_start = start_pos + len(marker_start)
-            creds_data = data[creds_start:end_pos]
-
-            credentials = json.loads(creds_data.decode('utf-8'))
-            print("Using embedded credentials from executable")
-            return credentials
-        else:
-            return None
-
-    except Exception as e:
-        print(f"Warning: Could not read embedded credentials: {e}")
-        return None
-
-def get_credentials(args: argparse.Namespace) -> Dict[str, str]:
-    """Determine credentials source and return them.
-    Priority: command-line args > embedded credentials > protocol URL > config.json
-    """
-    if args.server and args.session_id and args.token:
-        print("Using credentials from command-line arguments")
-        return {
-            "server": args.server,
-            "session_id": args.session_id,
-            "token": args.token
-        }
-
-    embedded_creds = load_embedded_credentials()
-    if embedded_creds:
-        return embedded_creds
-
-    if args.protocol_url and args.protocol_url.startswith("systemcheck://"):
-        print("Detected protocol URL launch")
-        credentials = parse_protocol_url(args.protocol_url)
-        if credentials:
-            print("Using credentials from protocol URL")
-            return credentials
-        else:
-            print("✗ Failed to parse protocol URL")
-            input("\nPress Enter to exit...")
-            sys.exit(1)
-
+    # Priority 2: Config file
     try:
         if getattr(sys, 'frozen', False):
             application_path = os.path.dirname(sys.executable)
         else:
             application_path = os.path.dirname(os.path.abspath(__file__))
+
         config_path = os.path.join(application_path, "config.json")
-        with open(config_path, "r") as f:
-            config = json.load(f)
-        print("Using credentials from config.json")
-        return {
-            "server": config["server"],
-            "session_id": config["session_id"],
-            "token": config["token"]
-        }
-    except FileNotFoundError:
-        print("✗ No credentials provided.")
-        print("  Credentials should be embedded in the executable.")
-        print("  For testing, you can pass --server, --session-id, and --token as arguments,")
-        print("  or provide a config.json file.")
-        input("\nPress Enter to exit...")
-        sys.exit(1)
-    except (KeyError, json.JSONDecodeError) as e:
-        print(f"✗ Invalid or corrupted 'config.json': {e}")
-        input("\nPress Enter to exit...")
-        sys.exit(1)
 
-# ----------------------------------------------
-# Server Communication
-# ----------------------------------------------
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                config = json.load(f)
+            if "server" in config:
+                print(f"Using server from config.json: {config['server']}")
+                return config["server"].rstrip('/')
+    except Exception as e:
+        print(f"Note: Could not read config.json: {e}")
 
-def send_results_to_server(server_url: str, session_id: str, token: str, results: Dict[str, Any]) -> bool:
+    # Priority 3: Default
+    print(f"Using default server: {DEFAULT_SERVER}")
+    return DEFAULT_SERVER
+
+def send_results_to_server(server_url: str, run_id: str, results: Dict[str, Any]) -> bool:
     """Send check results to the server."""
     try:
-        print(f"\nSending results to server: {server_url}/api/sessions/{session_id}/result")
+        print(f"\nSending results to server: {server_url}/api/results")
 
-        endpoint = f"{server_url}/api/sessions/{session_id}/result"
+        endpoint = f"{server_url}/api/results"
         payload = {
-            "token": token,
+            "run_id": run_id,
             "results": results,
             "client_version": VERSION
         }
@@ -368,6 +306,7 @@ def send_results_to_server(server_url: str, session_id: str, token: str, results
 
     except requests.exceptions.ConnectionError:
         print("✗ Could not connect to server. Is the server running?")
+        print(f"   Server URL: {server_url}")
         return False
     except requests.exceptions.Timeout:
         print("✗ Connection to server timed out.")
@@ -381,23 +320,27 @@ def send_results_to_server(server_url: str, session_id: str, token: str, results
 # ----------------------------------------------
 
 def main():
-    print("=" * 50)
+    print("=" * 60)
     print(f"System Check Client v{VERSION}")
-    print("=" * 50)
+    print("=" * 60)
     print()
 
+    # Parse command-line arguments
     parser = argparse.ArgumentParser(description="System Check Client")
-    parser.add_argument("--server", help="Server URL")
-    parser.add_argument("--session-id", help="Session ID")
-    parser.add_argument("--token", help="Authentication token")
-    parser.add_argument("protocol_url", nargs="?", help="systemcheck:// protocol URL")
+    parser.add_argument("--server", help="Server URL (default: http://localhost:5000)")
+    parser.add_argument("--save-only", action="store_true", help="Only save results to file, don't send to server")
     args = parser.parse_args()
 
-    credentials = get_credentials(args)
-    server_url = credentials["server"]
-    session_id = credentials["session_id"]
-    token = credentials["token"]
+    # Generate unique run ID
+    run_id = str(uuid.uuid4())
+    print(f"Run ID: {run_id}")
+    print()
 
+    # Get server URL
+    server_url = get_server_url(args)
+    print()
+
+    # Run system checks
     try:
         results = run_system_check()
     except Exception as e:
@@ -405,25 +348,53 @@ def main():
         input("\nPress Enter to exit...")
         sys.exit(1)
 
-    success = send_results_to_server(server_url, session_id, token, results)
+    # Save results locally
+    try:
+        if getattr(sys, 'frozen', False):
+            application_path = os.path.dirname(sys.executable)
+        else:
+            application_path = os.path.dirname(os.path.abspath(__file__))
+
+        results_file = os.path.join(application_path, f"result_{run_id}.json")
+        with open(results_file, 'w') as f:
+            json.dump({
+                "run_id": run_id,
+                "results": results,
+                "client_version": VERSION
+            }, f, indent=2)
+        print(f"\n✓ Results saved to: {results_file}")
+    except Exception as e:
+        print(f"\n⚠ Could not save results to file: {e}")
+
+    # Send to server (unless save-only mode)
+    if args.save_only:
+        print("\n(Save-only mode: Results not sent to server)")
+        success = True
+    else:
+        success = send_results_to_server(server_url, run_id, results)
 
     print()
     if success:
-        print("=" * 50)
+        print("=" * 60)
         print("✓ System check completed successfully!")
-        print("=" * 50)
-        print("\nYou can now check the candidate page in your browser.")
+        print("=" * 60)
         print()
-        input("Press Enter to exit...")
-        sys.exit(0)
+        print(f"Your Run ID: {run_id}")
+        print()
+        print("You can view results at:")
+        print(f"{server_url}/results/{run_id}")
+        print()
     else:
-        print("=" * 50)
-        print("✗ System check failed to submit results")
-        print("=" * 50)
-        print("\nPlease check server status and try again.")
+        print("=" * 60)
+        print("✗ System check completed but failed to send results")
+        print("=" * 60)
         print()
-        input("Press Enter to exit...")
-        sys.exit(1)
+        print(f"Your Run ID: {run_id}")
+        print("Results were saved locally.")
+        print()
+
+    input("Press Enter to exit...")
+    sys.exit(0 if success else 1)
 
 if __name__ == "__main__":
     main()
