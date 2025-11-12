@@ -20,7 +20,7 @@ import socket
 VERSION = "1.0.0"
 
 # Default server URL (can be overridden)
-DEFAULT_SERVER = "http://localhost:5000"
+DEFAULT_SERVER = "http://localhost:8000"
 
 # ----------------------------------------------
 # System Detection Functions

@@ -230,6 +230,11 @@ def view_result(run_id: str):
     """View results page for a specific run ID."""
     return render_template('results.html', run_id=run_id)
 
+@app.route('/interview/<run_id>')
+def interview(run_id: str):
+    """Interview page for a specific run ID."""
+    return render_template('interview.html', run_id=run_id)
+
 # ----------------------------------------------
 # Static Files
 # ----------------------------------------------
@@ -283,7 +288,7 @@ if __name__ == '__main__':
 
     print()
     print("=" * 60)
-    print("Starting server on http://0.0.0.0:5000")
+    print("Starting server on http://0.0.0.0:8000")
     print("=" * 60)
 
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=True)

@@ -142,11 +142,11 @@ venv\Scripts\activate     # Windows
 python server/app.py
 ```
 
-The server will start on `http://localhost:5000`
+The server will start on `http://localhost:8000`
 
 ### Using the Web Interface
 
-1. Open your browser and navigate to `http://localhost:5000`
+1. Open your browser and navigate to `http://localhost:8000`
 2. Click the download button for your operating system
 3. The executable will download (same file for everyone!)
 4. Run the downloaded executable:
@@ -172,7 +172,7 @@ The server will start on `http://localhost:5000`
 system_check_client.exe
 
 # With custom server:
-./system_check_client --server http://your-server.com:5000
+./system_check_client --server http://your-server.com:8000
 
 # Save results locally without sending to server:
 ./system_check_client --save-only
@@ -184,7 +184,7 @@ You can create a `config.json` file next to the executable to set a default serv
 
 ```json
 {
-  "server": "http://your-server.com:5000"
+  "server": "http://your-server.com:8000"
 }
 ```
 
@@ -196,7 +196,7 @@ You can create a `config.json` file next to the executable to set a default serv
 - Click "View Results"
 
 **Option 2**: Direct URL
-- Navigate to: `http://localhost:5000/results/<run-id>`
+- Navigate to: `http://localhost:8000/results/<run-id>`
 
 **Option 3**: Recent Results
 - The homepage shows the 5 most recent results
@@ -216,7 +216,7 @@ Downloads the pre-built executable for the specified OS.
 
 **Example:**
 ```bash
-curl -O http://localhost:5000/download/windows
+curl -O http://localhost:8000/download/windows
 ```
 
 ### Submit Results
@@ -266,7 +266,7 @@ Retrieves results for a specific Run ID.
 
 **Example:**
 ```bash
-curl http://localhost:5000/api/results/a1b2c3d4-...
+curl http://localhost:8000/api/results/a1b2c3d4-...
 ```
 
 ### List All Results
@@ -277,7 +277,7 @@ Lists all results (most recent first).
 
 **Example:**
 ```bash
-curl http://localhost:5000/api/results
+curl http://localhost:8000/api/results
 ```
 
 ### Health Check
@@ -341,7 +341,7 @@ For development and testing, you can run the client directly without building:
 
 ```bash
 cd client
-python system_check_client.py --server http://localhost:5000
+python system_check_client.py --server http://localhost:8000
 ```
 
 ### Manual Build
@@ -364,7 +364,7 @@ pip install gunicorn
 
 # Run with gunicorn
 cd server
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+gunicorn -w 4 -b 0.0.0.0:8000 app:app
 ```
 
 ### Environment Variables
@@ -372,7 +372,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 You can configure the server using environment variables:
 
 - `FLASK_ENV`: Set to `production` for production
-- `PORT`: Server port (default: 5000)
+- `PORT`: Server port (default: 8000)
 - `HOST`: Server host (default: 0.0.0.0)
 
 ### Security Considerations
@@ -421,7 +421,7 @@ If PyInstaller build fails:
 1. Verify the server is running
 2. Check firewall settings
 3. Use `--server` flag to specify correct server URL
-4. For local testing, use `http://localhost:5000`
+4. For local testing, use `http://localhost:8000`
 
 ### Results Not Received
 

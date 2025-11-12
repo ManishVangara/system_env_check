@@ -230,9 +230,79 @@
             padding: 40px;
             color: #999;
         }
+
+        .notification-banner {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #52c234 0%, #4a9d2a 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            animation: slideIn 0.5s ease-out;
+            max-width: 400px;
+            display: none;
+        }
+
+        .notification-banner.show {
+            display: block;
+        }
+
+        .notification-banner h3 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+        }
+
+        .notification-banner p {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+        }
+
+        .notification-banner .button {
+            background: white;
+            color: #4a9d2a;
+            padding: 8px 16px;
+            font-size: 14px;
+            margin-right: 8px;
+        }
+
+        .notification-banner .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
+    <div id="notification" class="notification-banner">
+        <button class="close-btn" onclick="closeNotification()">×</button>
+        <h3>✓ New Results Received!</h3>
+        <p id="notificationMessage"></p>
+        <a href="#" id="viewResultsBtn" class="button">View Results</a>
+    </div>
+
     <div class="container">
         <h1>System Environment Check</h1>
         <p class="subtitle">Download and run the system check client - No registration required!</p>
@@ -320,8 +390,66 @@
     </div>
 
     <script>
+        let lastResultTime = null;
+        let pollingInterval = null;
+
         // Load recent results on page load
-        window.addEventListener('DOMContentLoaded', loadRecentResults);
+        window.addEventListener('DOMContentLoaded', () => {
+            loadRecentResults();
+            startPolling();
+        });
+
+        function startPolling() {
+            // Poll every 3 seconds for new results
+            pollingInterval = setInterval(checkForNewResults, 3000);
+        }
+
+        async function checkForNewResults() {
+            try {
+                const response = await fetch('/api/results');
+                const data = await response.json();
+
+                if (data.success && data.results.length > 0) {
+                    const latestResult = data.results[0];
+                    const latestTime = new Date(latestResult.received_at).getTime();
+
+                    // Check if this is a new result
+                    if (lastResultTime === null) {
+                        lastResultTime = latestTime;
+                    } else if (latestTime > lastResultTime) {
+                        // New result detected!
+                        lastResultTime = latestTime;
+                        showNotification(latestResult);
+                        loadRecentResults(); // Refresh the list
+                    }
+                }
+            } catch (err) {
+                console.error('Error checking for new results:', err);
+            }
+        }
+
+        function showNotification(result) {
+            const notification = document.getElementById('notification');
+            const message = document.getElementById('notificationMessage');
+            const viewBtn = document.getElementById('viewResultsBtn');
+
+            const status = result.results.status || 'unknown';
+            const hostname = result.results.system_info?.hostname || 'Unknown';
+
+            message.textContent = `System check completed from ${hostname} - Status: ${status}`;
+            viewBtn.href = `/results/${result.run_id}`;
+
+            notification.classList.add('show');
+
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 10000);
+        }
+
+        function closeNotification() {
+            document.getElementById('notification').classList.remove('show');
+        }
 
         async function loadRecentResults() {
             const container = document.getElementById('recentResults');

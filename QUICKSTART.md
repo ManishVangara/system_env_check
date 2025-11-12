@@ -41,11 +41,11 @@ This will create an executable in the `executables/` directory.
 python server/app.py
 ```
 
-The server will start on `http://localhost:5000`
+The server will start on `http://localhost:8000`
 
 ### 4. Test the Application
 
-1. Open your browser to `http://localhost:5000`
+1. Open your browser to `http://localhost:8000`
 2. Download the executable for your OS
 3. Double-click the executable to run it
 4. Copy the **Run ID** displayed in the console
@@ -76,7 +76,7 @@ python system_check_client.py
 The client will:
 1. Generate a unique Run ID
 2. Run system checks
-3. Send results to `http://localhost:5000` (default)
+3. Send results to `http://localhost:8000` (default)
 4. Display the Run ID for viewing results
 
 ## How It Works
@@ -110,14 +110,14 @@ The client will:
 Three ways to view results:
 
 1. **Enter Run ID**: Paste the Run ID in the input box on the homepage
-2. **Direct URL**: Go to `http://localhost:5000/results/<run-id>`
+2. **Direct URL**: Go to `http://localhost:8000/results/<run-id>`
 3. **Recent Results**: Click on any result in the "Recent Results" section
 
 ## Command-Line Options
 
 ```bash
 # Run with custom server
-./system_check_client --server http://your-server.com:5000
+./system_check_client --server http://your-server.com:8000
 
 # Save results locally without sending to server
 ./system_check_client --save-only
@@ -132,7 +132,7 @@ Create a `config.json` file next to the executable to set defaults:
 
 ```json
 {
-  "server": "http://your-server.com:5000"
+  "server": "http://your-server.com:8000"
 }
 ```
 

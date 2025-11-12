@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview - System Check</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .question-container {
+            margin-bottom: 30px;
+        }
+
+        .question-number {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .question-text {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .answer-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .answer-option {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .answer-option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .answer-option.selected {
+            border-color: #667eea;
+            background: #e8f0ff;
+        }
+
+        .answer-option input[type="radio"] {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .answer-option label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .text-answer {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .text-answer:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .button.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .completion-message {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .completion-message h2 {
+            color: #4caf50;
+            margin-bottom: 16px;
+            font-size: 28px;
+        }
+
+        .completion-message p {
+            color: #666;
+            margin-bottom: 24px;
+            font-size: 16px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/results/{{ run_id }}" class="back-link">← Back to Results</a>
+
+        <div class="card">
+            <h1>Interview Questions</h1>
+            <p class="subtitle">Run ID: <code>{{ run_id }}</code></p>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+
+            <div id="questionContainer" class="question-container">
+                <!-- Questions will be dynamically loaded here -->
+            </div>
+
+            <div id="completionMessage" class="completion-message hidden">
+                <h2>✓ Interview Completed!</h2>
+                <p>Thank you for completing the interview. Your responses have been recorded.</p>
+                <a href="/" class="button">Return to Home</a>
+            </div>
+
+            <div id="buttonGroup" class="button-group">
+                <button class="button secondary" id="prevBtn" onclick="previousQuestion()" disabled>← Previous</button>
+                <button class="button" id="nextBtn" onclick="nextQuestion()">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const runId = "{{ run_id }}";
+
+        // Interview questions
+        const questions = [
+            {
+                id: 1,
+                type: 'multiple',
+                question: 'What is your current employment status?',
+                options: [
+                    'Employed full-time',
+                    'Employed part-time',
+                    'Self-employed',
+                    'Student',
+                    'Currently not employed'
+                ]
+            },
+            {
+                id: 2,
+                type: 'multiple',
+                question: 'How many years of professional experience do you have?',
+                options: [
+                    'Less than 1 year',
+                    '1-3 years',
+                    '3-5 years',
+                    '5-10 years',
+                    'More than 10 years'
+                ]
+            },
+            {
+                id: 3,
+                type: 'multiple',
+                question: 'What is your highest level of education?',
+                options: [
+                    'High School',
+                    'Associate Degree',
+                    'Bachelor\'s Degree',
+                    'Master\'s Degree',
+                    'Doctorate (PhD)',
+                    'Other'
+                ]
+            },
+            {
+                id: 4,
+                type: 'text',
+                question: 'What are your primary technical skills? (Please list)',
+                placeholder: 'e.g., Python, JavaScript, React, AWS, etc.'
+            },
+            {
+                id: 5,
+                type: 'text',
+                question: 'Why are you interested in this position?',
+                placeholder: 'Please share your motivation...'
+            },
+            {
+                id: 6,
+                type: 'multiple',
+                question: 'Are you available to start immediately?',
+                options: [
+                    'Yes, immediately',
+                    'Within 2 weeks',
+                    'Within 1 month',
+                    'More than 1 month',
+                    'Need to discuss'
+                ]
+            },
+            {
+                id: 7,
+                type: 'text',
+                question: 'Do you have any questions for us?',
+                placeholder: 'Please share any questions you may have...'
+            }
+        ];
+
+        let currentQuestion = 0;
+        let answers = {};
+
+        function renderQuestion() {
+            const container = document.getElementById('questionContainer');
+            const question = questions[currentQuestion];
+
+            let html = `
+                <div class="question-number">Question ${currentQuestion + 1} of ${questions.length}</div>
+                <div class="question-text">${question.question}</div>
+            `;
+
+            if (question.type === 'multiple') {
+                html += '<div class="answer-options">';
+                question.options.forEach((option, index) => {
+                    const isChecked = answers[question.id] === option ? 'checked' : '';
+                    const isSelected = answers[question.id] === option ? 'selected' : '';
+                    html += `
+                        <div class="answer-option ${isSelected}" onclick="selectOption(${question.id}, '${option.replace(/'/g, "\\'")}')">
+                            <input type="radio"
+                                   name="q${question.id}"
+                                   value="${option}"
+                                   id="opt${index}"
+                                   ${isChecked}
+                                   onchange="selectOption(${question.id}, '${option.replace(/'/g, "\\'")}')">
+                            <label for="opt${index}">${option}</label>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else if (question.type === 'text') {
+                const savedAnswer = answers[question.id] || '';
+                html += `
+                    <textarea
+                        class="text-answer"
+                        id="textAnswer"
+                        placeholder="${question.placeholder}"
+                        onchange="saveTextAnswer(${question.id})">${savedAnswer}</textarea>
+                `;
+            }
+
+            container.innerHTML = html;
+            updateProgress();
+            updateButtons();
+        }
+
+        function selectOption(questionId, option) {
+            answers[questionId] = option;
+            renderQuestion();
+        }
+
+        function saveTextAnswer(questionId) {
+            const text = document.getElementById('textAnswer').value;
+            answers[questionId] = text;
+        }
+
+        function nextQuestion() {
+            // Save text answer if current question is text type
+            if (questions[currentQuestion].type === 'text') {
+                saveTextAnswer(questions[currentQuestion].id);
+            }
+
+            // Check if answer is provided
+            if (!answers[questions[currentQuestion].id]) {
+                alert('Please answer the question before proceeding.');
+                return;
+            }
+
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                renderQuestion();
+            } else {
+                completeInterview();
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                renderQuestion();
+            }
+        }
+
+        function updateProgress() {
+            const progress = ((currentQuestion + 1) / questions.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+
+        function updateButtons() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            prevBtn.disabled = currentQuestion === 0;
+
+            if (currentQuestion === questions.length - 1) {
+                nextBtn.textContent = 'Complete Interview';
+            } else {
+                nextBtn.textContent = 'Next →';
+            }
+        }
+
+        function completeInterview() {
+            // Hide question and buttons
+            document.getElementById('questionContainer').classList.add('hidden');
+            document.getElementById('buttonGroup').classList.add('hidden');
+
+            // Show completion message
+            document.getElementById('completionMessage').classList.remove('hidden');
+
+            // Here you could send the answers to the server
+            console.log('Interview completed. Answers:', answers);
+
+            // Optional: Send to server
+            // saveInterviewResults();
+        }
+
+        async function saveInterviewResults() {
+            try {
+                const response = await fetch('/api/interview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        run_id: runId,
+                        answers: answers
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('Interview results saved');
+                }
+            } catch (err) {
+                console.error('Error saving interview results:', err);
+            }
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', renderQuestion);
+    </script>
+</body>
+</html>
