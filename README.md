@@ -139,12 +139,12 @@ source venv/bin/activate  # Linux/macOS
 venv\Scripts\activate     # Windows
 
 # Start the server
-uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
+uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload --reload-exclude "venv/*" --reload-exclude ".venv/*"
 ```
 
 The server will start on `http://localhost:8000`
 
-**Note**: The `--reload` flag enables auto-reload during development. Remove it for production.
+**Note**: The `--reload` flag enables auto-reload during development. Remove it for production. The `--reload-exclude` flags prevent unnecessary reloads from the virtual environment.
 
 ### Using the Web Interface
 

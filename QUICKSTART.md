@@ -38,12 +38,12 @@ This will create an executable in the `executables/` directory.
 ### 3. Start the Server
 
 ```bash
-uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
+uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload --reload-exclude "venv/*" --reload-exclude ".venv/*"
 ```
 
 The server will start on `http://localhost:8000`
 
-**Note**: The `--reload` flag enables auto-reload during development.
+**Note**: The `--reload` flag enables auto-reload during development. The `--reload-exclude` flags prevent unnecessary reloads from the virtual environment.
 
 ### 4. Test the Application
 
@@ -59,7 +59,7 @@ After installing dependencies:
 
 ```bash
 # Build client and start server (in separate terminals)
-python build_scripts/build_client.py && uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
+python build_scripts/build_client.py && uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload --reload-exclude "venv/*"
 ```
 
 ## Testing Without Building
@@ -68,7 +68,7 @@ For quick testing, you can run the client directly:
 
 ```bash
 # In terminal 1: Start server
-uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
+uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload --reload-exclude "venv/*"
 
 # In terminal 2: Run client directly
 cd client

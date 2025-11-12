@@ -12,22 +12,11 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
+from contextlib import asynccontextmanager
 import os
 import json
 from datetime import datetime
 import platform as sys_platform
-
-# Create FastAPI app
-app = FastAPI(title="System Check Server", version="1.0.0")
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Configuration
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -40,6 +29,65 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 os.makedirs(EXECUTABLES_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
+
+# Helper function for startup (defined before lifespan)
+def get_executable_path_startup(os_type: str) -> Optional[str]:
+    """Get the path to the executable for the given OS."""
+    executable_names = {
+        'windows': 'system_check_client.exe',
+        'linux': 'system_check_client_linux',
+        'darwin': 'system_check_client_macos'
+    }
+
+    if os_type not in executable_names:
+        return None
+
+    exe_path = os.path.join(EXECUTABLES_DIR, executable_names[os_type])
+    return exe_path if os.path.exists(exe_path) else None
+
+# Lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("\n" + "=" * 60)
+    print("System Check Server v1.0.0 (FastAPI)")
+    print("=" * 60)
+    print(f"Executables directory: {EXECUTABLES_DIR}")
+    print(f"Results directory: {RESULTS_DIR}")
+    print()
+
+    # Check for available executables
+    print("Available executables:")
+    for os_type in ['windows', 'linux', 'darwin']:
+        exe_path = get_executable_path_startup(os_type)
+        if exe_path:
+            print(f"  ✓ {os_type}: {os.path.basename(exe_path)}")
+        else:
+            print(f"  ✗ {os_type}: not built")
+
+    print()
+    print("=" * 60)
+    print("Server running at: http://localhost:8000")
+    print("API Documentation: http://localhost:8000/docs")
+    print("=" * 60)
+    print("\nPress CTRL+C to stop the server\n")
+
+    yield
+
+    # Shutdown (if needed)
+    # Clean up resources here
+
+# Create FastAPI app with lifespan
+app = FastAPI(title="System Check Server", version="1.0.0", lifespan=lifespan)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Setup Jinja2 templates
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -339,36 +387,6 @@ async def health():
     }
 
 # ----------------------------------------------
-# Startup Event
-# ----------------------------------------------
-
-@app.on_event("startup")
-async def startup_event():
-    """Print server information on startup."""
-    print("\n" + "=" * 60)
-    print("System Check Server v1.0.0 (FastAPI)")
-    print("=" * 60)
-    print(f"Executables directory: {EXECUTABLES_DIR}")
-    print(f"Results directory: {RESULTS_DIR}")
-    print()
-
-    # Check for available executables
-    print("Available executables:")
-    for os_type in ['windows', 'linux', 'darwin']:
-        exe_path = get_executable_path(os_type)
-        if exe_path and os.path.exists(exe_path):
-            print(f"  ✓ {os_type}: {os.path.basename(exe_path)}")
-        else:
-            print(f"  ✗ {os_type}: not built")
-
-    print()
-    print("=" * 60)
-    print("Server running at: http://localhost:8000")
-    print("API Documentation: http://localhost:8000/docs")
-    print("=" * 60)
-    print("\nPress CTRL+C to stop the server\n")
-
-# ----------------------------------------------
 # Main Entry Point
 # ----------------------------------------------
 
@@ -379,5 +397,6 @@ if __name__ == '__main__':
         host="0.0.0.0",
         port=8000,
         reload=True,
+        reload_excludes=["venv/*", ".venv/*", "*.pyc", "__pycache__/*", ".git/*"],
         log_level="info"
     )
