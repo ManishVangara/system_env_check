@@ -1,36 +1,67 @@
 #!/usr/bin/env python3
 """
-System Check Server - Simplified Version
+System Check Server - FastAPI Version
 Serves pre-built executables and collects system check results.
 No authentication required - results identified by run ID.
 """
 
-from flask import Flask, request, jsonify, send_file, render_template, send_from_directory
-from flask_cors import CORS
+from fastapi import FastAPI, Request, HTTPException, status
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Dict, Any, Optional, List
 import os
 import json
 from datetime import datetime
-from typing import Dict, Any
 import platform as sys_platform
 
-app = Flask(__name__,
-            template_folder='../templates',
-            static_folder='../static')
-CORS(app)
+# Create FastAPI app
+app = FastAPI(title="System Check Server", version="1.0.0")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Configuration
-EXECUTABLES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'executables')
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+EXECUTABLES_DIR = os.path.join(BASE_DIR, 'executables')
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'results')
+TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
 # Ensure directories exist
 os.makedirs(EXECUTABLES_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+# Setup Jinja2 templates
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+# Mount static files
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# ----------------------------------------------
+# Pydantic Models
+# ----------------------------------------------
+
+class ResultSubmission(BaseModel):
+    run_id: str
+    results: Dict[str, Any]
+    client_version: Optional[str] = None
 
 # ----------------------------------------------
 # Helper Functions
 # ----------------------------------------------
 
-def get_executable_path(os_type: str) -> str:
+def get_executable_path(os_type: str) -> Optional[str]:
     """Get the path to the executable for the given OS."""
     executable_names = {
         'windows': 'system_check_client.exe',
@@ -44,7 +75,7 @@ def get_executable_path(os_type: str) -> str:
 
     return os.path.join(EXECUTABLES_DIR, filename)
 
-def load_all_results() -> list:
+def load_all_results() -> List[Dict[str, Any]]:
     """Load all results from the results directory."""
     results = []
 
@@ -65,22 +96,83 @@ def load_all_results() -> list:
     return results
 
 # ----------------------------------------------
-# API Endpoints
+# Web Pages (HTML)
 # ----------------------------------------------
 
-@app.route('/')
-def index():
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
     """Render the main page."""
-    return render_template('index.html')
+    return templates.TemplateResponse("index.html", {"request": request})
 
-@app.route('/download')
-@app.route('/download/<os_type>')
-def download_executable(os_type: str = None):
+@app.get("/results/{run_id}", response_class=HTMLResponse)
+async def view_result(request: Request, run_id: str):
+    """View results page for a specific run ID."""
+    return templates.TemplateResponse("results.html", {"request": request, "run_id": run_id})
+
+@app.get("/interview/{run_id}", response_class=HTMLResponse)
+async def interview(request: Request, run_id: str):
+    """Interview page for a specific run ID."""
+    # Check if the system check passed before allowing interview access
+    try:
+        result_file = os.path.join(RESULTS_DIR, f"{run_id}.json")
+
+        if not os.path.exists(result_file):
+            return templates.TemplateResponse(
+                "error.html",
+                {
+                    "request": request,
+                    "error_title": "Results Not Found",
+                    "error_message": f"No results found for Run ID: {run_id}",
+                    "back_url": "/"
+                },
+                status_code=404
+            )
+
+        with open(result_file, 'r') as f:
+            data = json.load(f)
+
+        # Check if system check passed
+        result_status = data.get('results', {}).get('status', 'UNKNOWN')
+
+        if result_status != 'PASS':
+            return templates.TemplateResponse(
+                "error.html",
+                {
+                    "request": request,
+                    "error_title": "System Check Failed",
+                    "error_message": "You must pass the system check before proceeding to the interview.",
+                    "back_url": f"/results/{run_id}"
+                },
+                status_code=403
+            )
+
+        return templates.TemplateResponse("interview.html", {"request": request, "run_id": run_id})
+
+    except Exception as e:
+        print(f"Error checking interview eligibility: {e}")
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error_title": "Error",
+                "error_message": "An error occurred while checking your eligibility.",
+                "back_url": "/"
+            },
+            status_code=500
+        )
+
+# ----------------------------------------------
+# Download Endpoints
+# ----------------------------------------------
+
+@app.get("/download")
+@app.get("/download/{os_type}")
+async def download_executable(request: Request, os_type: Optional[str] = None):
     """Download the executable for the specified OS."""
     try:
         # Detect client OS from User-Agent if not specified
         if not os_type:
-            user_agent = request.headers.get('User-Agent', '').lower()
+            user_agent = request.headers.get('user-agent', '').lower()
 
             if 'windows' in user_agent or 'win32' in user_agent or 'win64' in user_agent:
                 os_type = 'windows'
@@ -106,201 +198,155 @@ def download_executable(os_type: str = None):
         executable_path = get_executable_path(os_type)
 
         if not executable_path or not os.path.exists(executable_path):
-            return jsonify({
-                'success': False,
-                'error': f'Executable not found for OS: {os_type}. Please build executables first.',
-                'hint': f'Run: python build_scripts/build_client.py (on {os_type} machine)'
-            }), 404
+            return JSONResponse(
+                status_code=404,
+                content={
+                    'success': False,
+                    'error': f'Executable not found for OS: {os_type}. Please build executables first.',
+                    'hint': f'Run: python build_scripts/build_client.py (on {os_type} machine)'
+                }
+            )
 
         # Send file directly (no credential embedding needed)
-        return send_file(
-            executable_path,
-            as_attachment=True,
-            download_name=download_name,
-            mimetype='application/octet-stream'
+        return FileResponse(
+            path=executable_path,
+            filename=download_name,
+            media_type='application/octet-stream'
         )
 
     except Exception as e:
         print(f"Error in download_executable: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return JSONResponse(
+            status_code=500,
+            content={
+                'success': False,
+                'error': str(e)
+            }
+        )
 
-@app.route('/api/results', methods=['POST'])
-def receive_result():
+# ----------------------------------------------
+# API Endpoints
+# ----------------------------------------------
+
+@app.post("/api/results")
+async def receive_result(request: Request, submission: ResultSubmission):
     """Receive system check results from client."""
     try:
-        data = request.get_json()
+        if not submission.run_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing run_id"
+            )
 
-        run_id = data.get('run_id')
-        results = data.get('results', {})
-        client_version = data.get('client_version')
-
-        if not run_id:
-            return jsonify({
-                'success': False,
-                'error': 'Missing run_id'
-            }), 400
+        # Get client IP
+        client_ip = request.client.host if request.client else 'unknown'
 
         # Prepare result data
         result_data = {
-            'run_id': run_id,
-            'results': results,
-            'client_version': client_version,
+            'run_id': submission.run_id,
+            'results': submission.results,
+            'client_version': submission.client_version,
             'received_at': datetime.utcnow().isoformat() + 'Z',
-            'client_ip': request.remote_addr
+            'client_ip': client_ip
         }
 
         # Save to individual result file
-        result_file = os.path.join(RESULTS_DIR, f"{run_id}.json")
+        result_file = os.path.join(RESULTS_DIR, f"{submission.run_id}.json")
         with open(result_file, 'w') as f:
             json.dump(result_data, f, indent=2)
 
-        print(f"✓ Received results for run ID: {run_id}")
-        print(f"  Status: {results.get('status', 'unknown')}")
+        print(f"✓ Received results for run ID: {submission.run_id}")
+        print(f"  Status: {submission.results.get('status', 'unknown')}")
         print(f"  Saved to: {result_file}")
 
-        return jsonify({
+        return {
             'success': True,
             'message': 'Results received successfully',
-            'run_id': run_id,
-            'view_url': f'/results/{run_id}'
-        }), 200
+            'run_id': submission.run_id,
+            'view_url': f'/results/{submission.run_id}'
+        }
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error in receive_result: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/results/<run_id>', methods=['GET'])
-def get_result(run_id: str):
+@app.get("/api/results/{run_id}")
+async def get_result(run_id: str):
     """Get results for a specific run ID."""
     try:
         result_file = os.path.join(RESULTS_DIR, f"{run_id}.json")
 
         if not os.path.exists(result_file):
-            return jsonify({
-                'success': False,
-                'error': 'Results not found for this run ID'
-            }), 404
+            raise HTTPException(
+                status_code=404,
+                detail="Results not found for this run ID"
+            )
 
         with open(result_file, 'r') as f:
             data = json.load(f)
 
-        return jsonify({
+        return {
             'success': True,
             'data': data
-        }), 200
+        }
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error in get_result: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/results', methods=['GET'])
-def list_results():
+@app.get("/api/results")
+async def list_results():
     """List all results."""
     try:
         results = load_all_results()
 
-        return jsonify({
+        return {
             'success': True,
             'results': results,
             'count': len(results)
-        }), 200
+        }
 
     except Exception as e:
         print(f"Error in list_results: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/results/<run_id>')
-def view_result(run_id: str):
-    """View results page for a specific run ID."""
-    return render_template('results.html', run_id=run_id)
-
-@app.route('/interview/<run_id>')
-def interview(run_id: str):
-    """Interview page for a specific run ID."""
-    # Check if the system check passed before allowing interview access
-    try:
-        result_file = os.path.join(RESULTS_DIR, f"{run_id}.json")
-
-        if not os.path.exists(result_file):
-            return render_template('error.html',
-                                   error_title='Results Not Found',
-                                   error_message=f'No results found for Run ID: {run_id}',
-                                   back_url='/'), 404
-
-        with open(result_file, 'r') as f:
-            data = json.load(f)
-
-        # Check if system check passed
-        status = data.get('results', {}).get('status', 'UNKNOWN')
-
-        if status != 'PASS':
-            return render_template('error.html',
-                                   error_title='System Check Failed',
-                                   error_message='You must pass the system check before proceeding to the interview.',
-                                   back_url=f'/results/{run_id}'), 403
-
-        return render_template('interview.html', run_id=run_id)
-
-    except Exception as e:
-        print(f"Error checking interview eligibility: {e}")
-        return render_template('error.html',
-                               error_title='Error',
-                               error_message='An error occurred while checking your eligibility.',
-                               back_url='/'), 500
-
-# ----------------------------------------------
-# Static Files
-# ----------------------------------------------
-
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    """Serve static files."""
-    return send_from_directory(app.static_folder, filename)
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ----------------------------------------------
 # Health Check
 # ----------------------------------------------
 
-@app.route('/health')
-def health():
+@app.get("/health")
+async def health():
     """Health check endpoint."""
-
     # Check if executables exist
     executables = {}
     for os_type in ['windows', 'linux', 'darwin']:
         exe_path = get_executable_path(os_type)
         executables[os_type] = os.path.exists(exe_path) if exe_path else False
 
-    return jsonify({
+    return {
         'status': 'healthy',
         'version': '1.0.0',
         'executables_available': executables,
         'results_count': len(load_all_results())
-    }), 200
+    }
 
 # ----------------------------------------------
-# Main Entry Point
+# Startup Event
 # ----------------------------------------------
 
-if __name__ == '__main__':
+@app.on_event("startup")
+async def startup_event():
+    """Print server information on startup."""
     print("=" * 60)
-    print("System Check Server v1.0.0")
+    print("System Check Server v1.0.0 (FastAPI)")
     print("=" * 60)
     print(f"Executables directory: {EXECUTABLES_DIR}")
     print(f"Results directory: {RESULTS_DIR}")
@@ -317,7 +363,19 @@ if __name__ == '__main__':
 
     print()
     print("=" * 60)
-    print("Starting server on http://0.0.0.0:8000")
+    print("Server started successfully!")
     print("=" * 60)
 
-    app.run(host='0.0.0.0', port=8000, debug=True)
+# ----------------------------------------------
+# Main Entry Point
+# ----------------------------------------------
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )

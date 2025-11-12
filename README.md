@@ -41,7 +41,7 @@ system_env_check/
 ├── client/
 │   └── system_check_client.py      # Client executable source code
 ├── server/
-│   ├── app.py                       # Flask server application
+│   ├── app.py                       # FastAPI server application
 │   └── results/                     # Stored results (created at runtime)
 ├── build_scripts/
 │   ├── build_client.py              # Python build script
@@ -139,10 +139,12 @@ source venv/bin/activate  # Linux/macOS
 venv\Scripts\activate     # Windows
 
 # Start the server
-python server/app.py
+uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The server will start on `http://localhost:8000`
+
+**Note**: The `--reload` flag enables auto-reload during development. Remove it for production.
 
 ### Using the Web Interface
 
@@ -203,6 +205,10 @@ You can create a `config.json` file next to the executable to set a default serv
 - Click on any result to view details
 
 ## API Endpoints
+
+FastAPI provides automatic interactive API documentation:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
 
 ### Download Executable
 
@@ -356,24 +362,24 @@ pyinstaller --onefile --console --name system_check_client client/system_check_c
 
 ### Production Server
 
-For production deployment, use a WSGI server like Gunicorn:
+For production deployment, use Uvicorn with multiple workers:
 
 ```bash
-# Install gunicorn (already in requirements.txt)
-pip install gunicorn
+# Run with uvicorn (production mode)
+uvicorn server.app:app --host 0.0.0.0 --port 8000 --workers 4
 
-# Run with gunicorn
-cd server
-gunicorn -w 4 -b 0.0.0.0:8000 app:app
+# Or with Gunicorn as a process manager
+pip install gunicorn
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 server.app:app
 ```
 
 ### Environment Variables
 
 You can configure the server using environment variables:
 
-- `FLASK_ENV`: Set to `production` for production
 - `PORT`: Server port (default: 8000)
 - `HOST`: Server host (default: 0.0.0.0)
+- `WORKERS`: Number of worker processes (default: 1)
 
 ### Security Considerations
 

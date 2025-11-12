@@ -38,10 +38,12 @@ This will create an executable in the `executables/` directory.
 ### 3. Start the Server
 
 ```bash
-python server/app.py
+uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The server will start on `http://localhost:8000`
+
+**Note**: The `--reload` flag enables auto-reload during development.
 
 ### 4. Test the Application
 
@@ -57,7 +59,7 @@ After installing dependencies:
 
 ```bash
 # Build client and start server (in separate terminals)
-python build_scripts/build_client.py && python server/app.py
+python build_scripts/build_client.py && uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## Testing Without Building
@@ -66,7 +68,7 @@ For quick testing, you can run the client directly:
 
 ```bash
 # In terminal 1: Start server
-python server/app.py
+uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
 
 # In terminal 2: Run client directly
 cd client
@@ -140,8 +142,9 @@ Create a `config.json` file next to the executable to set defaults:
 
 - Read the full [README.md](README.md) for detailed documentation
 - Build executables for other platforms (Windows, Linux, macOS)
-- Deploy to production with gunicorn
+- Deploy to production with uvicorn or gunicorn
 - Customize the checks in `client/system_check_client.py`
+- Check out the automatic API docs at http://localhost:8000/docs
 
 ## Common Issues
 
