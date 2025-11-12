@@ -283,7 +283,10 @@
                     </div>
 
                     <div style="text-align: center; margin-top: 30px;">
-                        <a href="/interview/${result.run_id}" class="button" style="background: linear-gradient(135deg, #52c234 0%, #4a9d2a 100%); margin-right: 12px;">Proceed to Interview →</a>
+                        ${status === 'PASS' ?
+                            '<a href="/interview/' + result.run_id + '" class="button" style="background: linear-gradient(135deg, #52c234 0%, #4a9d2a 100%); margin-right: 12px;">Proceed to Interview →</a>' :
+                            '<p style="color: #f44336; font-weight: 600; margin-bottom: 16px;">⚠️ System check failed. Please run the check again from a compliant environment.</p>'
+                        }
                         <a href="/" class="button">Run Another Check</a>
                     </div>
                 `;

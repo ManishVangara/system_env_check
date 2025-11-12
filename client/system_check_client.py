@@ -16,6 +16,7 @@ import os
 import sys
 import uuid
 import socket
+import webbrowser
 
 VERSION = "1.0.0"
 
@@ -381,8 +382,19 @@ def main():
         print()
         print(f"Your Run ID: {run_id}")
         print()
-        print("You can view results at:")
-        print(f"{server_url}/results/{run_id}")
+
+        results_url = f"{server_url}/results/{run_id}"
+        print("Opening results in your browser...")
+        print(f"{results_url}")
+        print()
+
+        # Automatically open results page in browser
+        try:
+            webbrowser.open(results_url)
+            print("✓ Browser opened successfully!")
+        except Exception as e:
+            print(f"⚠ Could not open browser automatically: {e}")
+            print(f"Please manually visit: {results_url}")
         print()
     else:
         print("=" * 60)

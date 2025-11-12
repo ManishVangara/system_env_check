@@ -233,7 +233,36 @@ def view_result(run_id: str):
 @app.route('/interview/<run_id>')
 def interview(run_id: str):
     """Interview page for a specific run ID."""
-    return render_template('interview.html', run_id=run_id)
+    # Check if the system check passed before allowing interview access
+    try:
+        result_file = os.path.join(RESULTS_DIR, f"{run_id}.json")
+
+        if not os.path.exists(result_file):
+            return render_template('error.html',
+                                   error_title='Results Not Found',
+                                   error_message=f'No results found for Run ID: {run_id}',
+                                   back_url='/'), 404
+
+        with open(result_file, 'r') as f:
+            data = json.load(f)
+
+        # Check if system check passed
+        status = data.get('results', {}).get('status', 'UNKNOWN')
+
+        if status != 'PASS':
+            return render_template('error.html',
+                                   error_title='System Check Failed',
+                                   error_message='You must pass the system check before proceeding to the interview.',
+                                   back_url=f'/results/{run_id}'), 403
+
+        return render_template('interview.html', run_id=run_id)
+
+    except Exception as e:
+        print(f"Error checking interview eligibility: {e}")
+        return render_template('error.html',
+                               error_title='Error',
+                               error_message='An error occurred while checking your eligibility.',
+                               back_url='/'), 500
 
 # ----------------------------------------------
 # Static Files
