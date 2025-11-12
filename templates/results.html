@@ -260,8 +260,6 @@
                         ${buildCheckItem('Remote Access Tools', checks.remote_access_tools && checks.remote_access_tools.length > 0, checks.remote_access_tools)}
                     </div>
 
-                    ${checks.system_info ? buildSystemInfo(checks.system_info) : ''}
-
                     <div class="info-section">
                         <h3>Result Details</h3>
                         <div class="info-grid">
@@ -327,45 +325,6 @@
                 <div class="check-item ${statusClass}">
                     <div class="check-label">${label}</div>
                     <div class="check-value ${statusClass}">${displayValue}</div>
-                </div>
-            `;
-        }
-
-        function buildSystemInfo(info) {
-            return `
-                <div class="info-section">
-                    <h3>System Information</h3>
-                    <div class="info-grid">
-                        ${info.hostname ? `
-                            <div class="info-label">Hostname:</div>
-                            <div class="info-value">${info.hostname}</div>
-                        ` : ''}
-
-                        ${info.platform ? `
-                            <div class="info-label">Platform:</div>
-                            <div class="info-value">${info.platform}</div>
-                        ` : ''}
-
-                        ${info.platform_release ? `
-                            <div class="info-label">OS Release:</div>
-                            <div class="info-value">${info.platform_release}</div>
-                        ` : ''}
-
-                        ${info.architecture ? `
-                            <div class="info-label">Architecture:</div>
-                            <div class="info-value">${info.architecture}</div>
-                        ` : ''}
-
-                        ${info.processor ? `
-                            <div class="info-label">Processor:</div>
-                            <div class="info-value">${info.processor}</div>
-                        ` : ''}
-
-                        ${info.username ? `
-                            <div class="info-label">Username:</div>
-                            <div class="info-value">${info.username}</div>
-                        ` : ''}
-                    </div>
                 </div>
             `;
         }

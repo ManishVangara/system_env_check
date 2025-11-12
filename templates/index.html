@@ -429,22 +429,8 @@
         }
 
         function showNotification(result) {
-            const notification = document.getElementById('notification');
-            const message = document.getElementById('notificationMessage');
-            const viewBtn = document.getElementById('viewResultsBtn');
-
-            const status = result.results.status || 'unknown';
-            const hostname = result.results.system_info?.hostname || 'Unknown';
-
-            message.textContent = `System check completed from ${hostname} - Status: ${status}`;
-            viewBtn.href = `/results/${result.run_id}`;
-
-            notification.classList.add('show');
-
-            // Auto-hide after 10 seconds
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 10000);
+            // Automatically redirect to results page
+            window.location.href = `/results/${result.run_id}`;
         }
 
         function closeNotification() {
@@ -470,7 +456,7 @@
                     const status = result.results.status || 'unknown';
                     const statusClass = status.toLowerCase();
                     const timestamp = new Date(result.received_at).toLocaleString();
-                    const hostname = result.results.system_info?.hostname || 'Unknown';
+                    const runIdShort = result.run_id.substring(0, 8) + '...';
 
                     return `
                         <div class="result-item">
@@ -479,7 +465,7 @@
                                     ${status === 'PASS' ? '✓' : '✗'} ${status}
                                 </div>
                                 <div class="result-item-meta">
-                                    ${hostname} • ${timestamp}
+                                    ${runIdShort} • ${timestamp}
                                 </div>
                             </div>
                             <a href="/results/${result.run_id}" class="result-item-link">

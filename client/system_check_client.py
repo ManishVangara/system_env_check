@@ -15,7 +15,6 @@ import subprocess
 import os
 import sys
 import uuid
-import socket
 import webbrowser
 
 VERSION = "1.0.0"
@@ -191,22 +190,6 @@ def is_rdp_session():
 
     return False
 
-def get_system_info():
-    """Get basic system information for identification."""
-    try:
-        return {
-            "hostname": socket.gethostname(),
-            "platform": platform.system(),
-            "platform_release": platform.release(),
-            "platform_version": platform.version(),
-            "architecture": platform.machine(),
-            "processor": platform.processor(),
-            "username": os.getenv('USERNAME') or os.getenv('USER') or 'unknown'
-        }
-    except Exception as e:
-        print(f"Error getting system info: {e}")
-        return {}
-
 def run_system_check() -> Dict[str, Any]:
     """Run a full system check and return results."""
     print("Running system checks...")
@@ -218,8 +201,7 @@ def run_system_check() -> Dict[str, Any]:
         "multiple_monitors": check_multiple_monitors(),
         "multiple_keyboards": count_devices("Keyboard") > 1,
         "multiple_mice": count_devices("Mouse") > 1,
-        "virtual_machine": check_virtual_machine(),
-        "system_info": get_system_info()
+        "virtual_machine": check_virtual_machine()
     }
 
     # Final decision
@@ -237,8 +219,7 @@ def run_system_check() -> Dict[str, Any]:
 
     print("-" * 50)
     for key, value in result.items():
-        if key != "system_info":  # Don't print system info in console
-            print(f"{key.replace('_', ' ').title()}: {value}")
+        print(f"{key.replace('_', ' ').title()}: {value}")
     print("-" * 50)
 
     return result
