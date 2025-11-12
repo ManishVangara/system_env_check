@@ -345,7 +345,7 @@ async def health():
 @app.on_event("startup")
 async def startup_event():
     """Print server information on startup."""
-    print("=" * 60)
+    print("\n" + "=" * 60)
     print("System Check Server v1.0.0 (FastAPI)")
     print("=" * 60)
     print(f"Executables directory: {EXECUTABLES_DIR}")
@@ -363,8 +363,10 @@ async def startup_event():
 
     print()
     print("=" * 60)
-    print("Server started successfully!")
+    print("Server running at: http://localhost:8000")
+    print("API Documentation: http://localhost:8000/docs")
     print("=" * 60)
+    print("\nPress CTRL+C to stop the server\n")
 
 # ----------------------------------------------
 # Main Entry Point

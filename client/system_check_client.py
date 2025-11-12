@@ -365,14 +365,16 @@ def main():
         print()
 
         results_url = f"{server_url}/results/{run_id}"
-        print("Opening results in your browser...")
-        print(f"{results_url}")
+        print("Opening server in your browser...")
+        print(f"Results will be displayed automatically")
+        print(f"Results URL: {results_url}")
         print()
 
-        # Automatically open results page in browser
+        # Open the index page (which will auto-redirect to results)
         try:
-            webbrowser.open(results_url)
+            webbrowser.open(server_url)
             print("✓ Browser opened successfully!")
+            print("   Your results will appear automatically in a few seconds")
         except Exception as e:
             print(f"⚠ Could not open browser automatically: {e}")
             print(f"Please manually visit: {results_url}")
